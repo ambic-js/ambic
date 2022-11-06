@@ -130,9 +130,9 @@ This means...
 * standard commands (`yarn test`, `yarn build`, `yarn validate`)
 * a standard documentation format ([Code Docs](https://github.com/ambic-js/codedocs))
 
-This model is obviously inspired by Rails, where it is a major part of [The Rails Doctrine](https://rubyonrails.org/doctrine#convention-over-configuration).
+This model is obviously inspired by Rails, where Convention over Configuration is a major part of [The Rails Doctrine](https://rubyonrails.org/doctrine#convention-over-configuration).
 
-We think Convention over Configuration has enabled Rails to be a stable long-term asset to many companies, allowing devs to focus on their applications instead of their stack. And we think after many years of experimenting the JavaScript world is finally ready for it. While new paradigms like Svelte, serverless, Web3, etc have come along and will continue to come along, we believe that we have entered the **age of diminishing returns** for web application ergonomics.
+We think this policy has enabled Rails to be a stable long-term asset to many companies, allowing devs to focus on their applications instead of their stack. And we think after many years of experimenting the JavaScript world is finally ready for it. While new paradigms like Svelte, serverless, Web3, etc have come along and will continue to come along, we believe that we have entered the **age of diminishing returns** for web application ergonomics.
 
 We think several technologies have proven their power and maturity and we're committing to them for the long haul:
 
@@ -149,9 +149,39 @@ And yes, we know eventually something better will come along to replace all of t
 
 All of these lofty ideals are just words. Ambic achieves the consistency and ergonomics of Polyrepo Nirvana with tooling:
 
-**`ambic [confgen](https://github.com/ambic-js/confgen)`** configures every repo in a consistent way: code organization, builds, tests, packaging, etc. Think create-react-app except idempotent: you can continue running it over and over as your needs change, as you add and removing tools to your config.
+** [`ambic confgen`](https://github.com/ambic-js/confgen)** configures every repo in a consistent way: code organization, builds, tests, packaging, etc. Think create-react-app except idempotent: you can continue running it over and over as your needs change, as you add and removing tools to your config. **Confgen is what gives Ambic's conventions teeth.**
 
-**`ambic propagate`** creates a tree of PRs from one. When you make a change to one repo, it generates PRs in all of the dependent repos so you can kick off tests and understand the implications of a change.
+**`ambic propagate`** creates a tree of PRs from one. When you make a change to one repo, it generates PRs in all of the dependent repos so you can kick off tests and understand the implications of a change. With a tree of linked PRs, bumping versions and rebasing changes becomes automatic. You still need to resolve conflicts, and you still need to hit the merge button, but 90% of the busy work is done for you.
+
+# Get Started
+
+That's really it. That's the pitch. If you've been nodding your head and you'd like to give the Ambic approach a try, head over to the [Confgen](https://github.com/ambic-js/confgen) docs and start scaffolding your repos:
+
+```bash
+# Create the backend repo
+cd /path/to/my/new/app
+mkdir backend
+cd backend
+npx confgen@latest @lib @server @docs sql codegen:lib:schema:operations dist:lib codedocs vite vitest yarn git prettier eslint typescript
+```
+
+```bash
+# Create your design system repo
+cd ../
+mkdir design-system
+cd design-system
+npx confgen@latest @lib @docs react dist:lib codedocs vite vitest yarn git prettier eslint typescript
+```
+
+```bash
+# Stitch them together in your app:
+cd ../
+mkdir app
+cd app
+npx confgen@latest @app @server react vite vitest yarn git prettier eslint typescript
+```
+
+But if you'd like to dig more into the philosophy behind Ambic, continue on...
 
 # Why Polyrepo
 
@@ -159,25 +189,25 @@ In order to understand why Ambic is committed to the Polyrepo lifestyle, let's t
 
 ## In the beginning....
 
-Once upon a time, the norm for organizing the codebase for a large application was **\*The Monolith**. Codebases like this would have a single repository, usually with many modules contained inside. Similar modules would share utilities, and build infrastructure.
+Once upon a time, the norm for organizing the codebase for a large application was **The Monolith**. Codebases like this would have a single repository, usually with many modules contained inside. Similar modules would share utilities, and build infrastructure.
 
 The monolith approach causes some unique pain:
 
-### A. Modules can grow very large without anyone noticing
+#### A. Modules can grow very large without anyone noticing
 
 This can lead to very complex parts of the application that are difficult to reason about. A common example is the Router of a large app. It pulls in functions from potentially hundreds of different pages and endpoints and integrates them together.
 
-### B. Modules can become tightly coupled
+#### B. Modules can become tightly coupled
 
 It's really easy in a monolith to have logic in one module that relies on undocumented internals of another module to function. You might have UI components that assume an API response has a very specific shape. It's easy to continue this state of affairs because you can change both of those parts of the codebase together in a single PR. But it makes it difficult to reason about modules, because there is poor separation of concerns.
 
-### C. Development tasks are slow
+#### C. Development tasks are slow
 
-The test suite is big. The linter has a lot of code to lint. This slows people down.
+The test suite is big. The linter has a lot of code to lint. The type checker has a lot of types to check. This slows people down.
 
-### D. Internal APIs are undocumented
+#### D. Internal APIs are undocumented
 
-You write a new API in one module, use it in another, merge the code and move on to the next task. It's not usually clear how, where, or when to document internal APIs and so there is often little to no documentation.
+You write a new API in one module, use it in another, merge the code and move on to the next task. It's not usually clear how, where, or when to document internal APIs. Do I add a new README in my module? Do I put it in the top level README because more people will see it? Do I add docblocks to my code? Do I create a guide in Notion? Do I put more details in the Swagger file? Without a clear, singular place to look for documentation, devs don't really know where there audience is, and so they write fewer, lower quality docs.
 
 ## Enter Microservices
 
@@ -185,19 +215,19 @@ Fed up with unwieldy monoliths, and desiring the sweet sweet taste of _separatio
 
 This means individual packages can be small and understandable. Tests run fast. but this comes with its own headaches:
 
-### E. Mocking and stubbing are a problem
+#### E. Mocking and stubbing are a problem
 
 Individual services do depend on each other. If my Application depends on my API Server, then the API Server needs to be either mocked or stubbed or spun up in order to run the Application test suite. Writing good mocks is hard work. And they are never 100% realistic. Spinning up instances of adjacent services is often slow and complicated.
 
-### F. Versioning hell
+#### F. Versioning hell
 
 Once you publish a change to one module, now you have to propagate that change to every other module. You probably then have to run more tests and do another round of reviews. This slows down integration.
 
-### G. Creeping inconsistency
+#### G. Creeping inconsistency
 
 Now that individual modules can pick the right tool for the job, that also means patterns and knowledge from one module don't transfer to another. One service can be written in Node while another is in Go. They can have different linting rules. They can have different ways of running tests. This makes it hard for devs to switch between different modules.
 
-### H. Duplication of effort
+#### H. Duplication of effort
 
 Every new module has to re-invent the wheel on some level. You have to reconfigure build processes, CI processes, linting, etc. You have to integrate third party services again and again. This is a real cost.
 
@@ -207,23 +237,23 @@ In order to tame the complexity of microservices, tooling for **Monorepos** was 
 
 Sounds perfect, but there are still challenges:
 
-### C. Some development tasks are _still_ slow
+#### C. Some development tasks are _still_ slow
 
 When you push up a PR you still have to run the entire dang test suite. Because it's easy for modules to depend on each other, many development tasks will still require you to configure and spin up many services to test things out.
 
-### G. Creeping inconsistency
+#### G. Creeping inconsistency
 
-### H. Duplication of effort
+#### H. Duplication of effort
 
 ... these are still challenges. Multiple packages still need to configure their own builds, their own linting. They can and do organize code differently.
 
-### B. Modules can become tightly coupled
+#### B. Modules can become tightly coupled
 
-### D. Internal APIs are undocumented
+#### D. Internal APIs are undocumented
 
 It's still easy to import code directly from one module into another, or to presume implementation details of one in another. You don't need to mock, stub, document, or version APIs in order to share them between modules.
 
-### I. More tools, more complexity
+#### I. More tools, more complexity
 
 Monorepos require their own suite of tools and the complexity that comes with them.
 
@@ -241,26 +271,26 @@ There is still friction with this setup, but we think it is the best of both wor
 
 So let's be clear. Ambic's Polyrepo approach accepts several weaknesses:
 
-### E. Mocking and stubbing are a problem
+#### E. Mocking and stubbing are still a problem
 
 We think this is a good tradeoff. Yes, mocking, stubbing, and spinning up adjacent services takes time and effor. But we think it's necessary to achieve good separation of concerns. And Ambic mitigates the pain in several ways:
 
 - **Consistent conventions across repos** make integration easier. Application tests can trivially embed a backend because the backend is written in Node.
 - **Repos can easily consume each other.** The Ambic tools make it trivial to export JavaScript functions from one repo to another. It just has to be versioned and documented, which we think is a good thing.
 
-### F. Versioning hell
+#### F. Versioning hell
 
 If you have poly-repos, then you have to do poly-releases. That's inevitable. Ambic also mitigates this pain though:
 
 - **`ambic propagate`** makes propagating a release to dependent packages a single `yarn` command away. There can still be integration issues to address, but much of the busy work is eliminated.
 
-### I. More tools, more complexity
+#### I. More tools, more complexity
 
 Compared to a Monolith, there is still tooling here to learn, and complexity to deal with. In our opinion, this is just the cost that goes hand-in-hand with faster build times and genuine separation of concerns. Ambic mitigates this by:
 
 - Having great tools. We work hard on ergonomics and documentation. We do usability testing. We iterate on the design of our tooling.
 
-### Centralize best practices
+#### Centralize best practices
 
 As of today, Ambic provides conventions and turn-key tooling for...
 
